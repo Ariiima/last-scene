@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import LandingPage from '../components/LandingPage'
-import QuestionFlow from '../components/QuestionFlow'
-import ResultView from '../components/ResultView'
+import LandingPage from '@/components/LandingPage'
+import QuestionFlow from '@/components/QuestionFlow'
+import ResultView from '@/components/ResultView'
+import { SeriesAutocomplete } from '@/components/SeriesAutocomplete'
 
 export default function SeriesDropFinder() {
   const [stage, setStage] = useState<'landing' | 'questions' | 'result'>('landing')

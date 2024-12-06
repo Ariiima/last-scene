@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Question from '@/components/Question'
-import ProgressBar from './ProgressBar'
+import ProgressBar from '@/components/ProgressBar'
+import { Loader2 } from 'lucide-react'
 
 interface QuestionFlowProps {
   show: string
@@ -11,58 +12,116 @@ interface QuestionFlowProps {
 
 export default function QuestionFlow({ show, onComplete }: QuestionFlowProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [questions, setQuestions] = useState<string[]>([])
   const [answers, setAnswers] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const questions = [
-    `When did you last watch an episode of ${show}?`,
-    `Do you remember any specific characters or plot points from ${show}?`,
-    `Can you recall any major events that happened in the last episode you watched?`,
-    `Were there any cliffhangers or unresolved plot points?`,
-    `Is there anything else you remember about where you left off in ${show}?`,
-  ]
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const response = await fetch('/api/openai/questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ show }),
+        });
 
-  const handleAnswer = (answer: string) => {
-    const newAnswers = [...answers, answer]
-    setAnswers(newAnswers)
+        if (!response.ok) {
+          throw new Error('Failed to fetch questions');
+        }
+
+        const data = await response.json();
+        if (data.questions) {
+          setQuestions(data.questions);
+        } else {
+          throw new Error('No questions received');
+        }
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+        setError('Failed to load questions. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [show]);
+
+  const handleAnswer = async (answer: string) => {
+    const newAnswers = [...answers, answer];
+    setAnswers(newAnswers);
 
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+      setCurrentQuestion(currentQuestion + 1);
     } else {
-      setLoading(true)
-      // Simulate API call to LLM
-      setTimeout(() => {
-        setLoading(false)
-        onComplete(`Based on your answers, you likely stopped watching ${show} at Season 2, Episode 7.`)
-      }, 2000)
+      setLoading(true);
+      try {
+        const response = await fetch('/api/openai/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            show,
+            questions,
+            answers: newAnswers,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to analyze answers');
+        }
+
+        const data = await response.json();
+        if (data.result) {
+          onComplete(data.result);
+        } else {
+          throw new Error('No result received');
+        }
+      } catch (error) {
+        console.error('Error analyzing answers:', error);
+        setError('Failed to analyze answers. Please try again.');
+        setLoading(false);
+      }
     }
-  }
+  };
 
   const handleBack = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1)
-      setAnswers(answers.slice(0, -1))
+      setCurrentQuestion(currentQuestion - 1);
+      setAnswers(answers.slice(0, -1));
     }
+  };
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-4">
+        <p>{error}</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <ProgressBar current={currentQuestion + 1} total={questions.length} />
+      <ProgressBar current={currentQuestion + 1} total={questions.length || 5} />
       {loading ? (
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-700 rounded"></div>
-          <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+          <p className="text-gray-400">Thinking...</p>
         </div>
       ) : (
-        <Question
-          question={questions[currentQuestion]}
-          onAnswer={handleAnswer}
-          onBack={handleBack}
-          showBack={currentQuestion > 0}
-        />
+        questions.length > 0 && (
+          <Question
+            question={questions[currentQuestion]}
+            onAnswer={handleAnswer}
+            onBack={handleBack}
+            showBack={currentQuestion > 0}
+          />
+        )
       )}
     </div>
-  )
+  );
 }
 
