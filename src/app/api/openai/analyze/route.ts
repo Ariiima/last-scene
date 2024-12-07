@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     const analysis: AnalysisResponse = JSON.parse(functionResponse);
 
     // If confidence is low, always include follow-up questions
-    if (analysis.confidence < 0.7 && !analysis.followUpQuestions) {
+    if (analysis.confidence < 0.9 && !analysis.followUpQuestions) {
       analysis.followUpQuestions = [
         "Do you remember any specific character deaths or major plot twists?",
         "Can you recall any significant locations or settings from your last watched episode?",

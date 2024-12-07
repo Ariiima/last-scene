@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getRateLimitInfo, incrementRateLimit } from '@/lib/rate-limit';
+import { preWrittenQuestions } from '@/lib/pre-written-questions';
 
 interface Question {
   question: string;
   context: string;
   category: 'plot' | 'character' | 'event' | 'emotion' | 'detail';
+  type: 'yes_no';
 }
 
 interface GenerateQuestionsResponse {
@@ -18,7 +21,7 @@ const openai = new OpenAI({
 const functions = [
   {
     name: 'generateQuestions',
-    description: 'Generate questions to help determine where a viewer stopped watching a TV show',
+    description: 'Generate yes/no questions to help determine where a viewer stopped watching a TV show',
     parameters: {
       type: 'object',
       properties: {
@@ -30,7 +33,7 @@ const functions = [
             properties: {
               question: {
                 type: 'string',
-                description: 'The question to ask the viewer'
+                description: 'The yes/no question to ask the viewer'
               },
               context: {
                 type: 'string',
@@ -40,9 +43,14 @@ const functions = [
                 type: 'string',
                 enum: ['plot', 'character', 'event', 'emotion', 'detail'],
                 description: 'The category of the question'
+              },
+              type: {
+                type: 'string',
+                enum: ['yes_no'],
+                description: 'The type of question - always yes/no'
               }
             },
-            required: ['question', 'context', 'category']
+            required: ['question', 'context', 'category', 'type']
           }
         }
       },
@@ -51,8 +59,30 @@ const functions = [
   }
 ];
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function POST(request: Request) {
   try {
+    // Check rate limit
+    const { isRateLimited, remainingUses, hoursUntilReset } = await getRateLimitInfo();
+
+    if (isRateLimited) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Daily limit reached. Please try again in ${hoursUntilReset} hours.`,
+          hoursUntilReset,
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset-Hours': hoursUntilReset.toString(),
+          }
+        }
+      );
+    }
+
     const { show } = await request.json();
 
     if (!show) {
@@ -62,33 +92,69 @@ export async function POST(request: Request) {
       );
     }
 
+    // Add artificial delay
+    await sleep(1000);
+
+    // Check if we have pre-written questions for this show
+    const preWritten = [show];
+    if (preWritten) {
+      // Increment rate limit after successful response
+      await incrementRateLimit();
+
+      return NextResponse.json({ 
+        questions: preWritten.questions,
+        remainingUses: remainingUses - 1,
+        hoursUntilReset,
+        isPreWritten: true
+      }, {
+        headers: {
+          'X-RateLimit-Remaining': (remainingUses - 1).toString(),
+          'X-RateLimit-Reset-Hours': hoursUntilReset.toString(),
+        }
+      });
+    }
+
+    // If no pre-written questions, use OpenAI
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are LastScene's TV show analysis expert, specializing in helping viewers remember where they stopped watching shows.
+          content: `You are LastScene's TV show expert, helping viewers remember where they stopped watching shows.
 
-Key Guidelines:
-- Generate questions that progressively help narrow down the viewer's last watched episode
-- Mix different types of questions (plot points, character developments, emotional moments, memorable scenes)
-- Avoid major spoilers while being specific enough to jog memory
-- Focus on memorable moments that would stick in a viewer's mind
-- Include questions about character relationships and story arcs
-- Consider both major plot points and smaller, memorable details
+Key Guidelines for Generating Yes/No Questions:
+1. Questions MUST be answerable with "Yes", "No", or "Not Sure"
+2. Progress from general to specific
+3. Focus on memorable moments, major plot points, and character developments
+4. Keep questions simple and straightforward
+5. Avoid spoilers for episodes after the one being discussed
+6. Mix different types:
+   - Plot developments
+   - Character arcs
+   - Memorable scenes
+   - Emotional moments
+   - Key locations or items
+           
+Example Questions:
+- "Do you remember seeing [specific major event]?"
+- "Was [character] still alive in your last watched episode?"
+- "Had [location/item] been introduced yet?"
+- "Were [characters] still enemies at this point?"
+- "Had [major plot point] been revealed yet?"
 
-Remember: The goal is to help viewers pinpoint their last watched episode through memory triggers.`
+Remember: Questions should help pinpoint the exact episode through memory triggers.`
         },
         {
           role: "user",
-          content: `Generate 5 strategic questions to help determine where someone stopped watching "${show}". 
+          content: `Generate 5 strategic yes/no questions to help determine where someone stopped watching "${show}". 
 
 The questions should:
-1. Progress from general to specific
-2. Cover different aspects (plot, characters, memorable moments)
-3. Be engaging and memory-triggering
-4. Avoid major spoilers
-5. Help pinpoint specific episodes or story arcs`
+1. Be answerable with Yes/No/Not Sure
+2. Progress from general to specific
+3. Cover different aspects (plot, characters, memorable moments)
+4. Be engaging and memory-triggering
+5. Avoid major spoilers
+6. Help pinpoint specific episodes or story arcs`
         }
       ],
       functions,
@@ -105,10 +171,23 @@ The questions should:
 
     const { questions } = JSON.parse(functionCall.arguments) as GenerateQuestionsResponse;
 
+    // Increment rate limit after successful question generation
+    await incrementRateLimit();
+
     // Only return the question text for the frontend
     const questionTexts = questions.map((q: Question) => q.question);
 
-    return NextResponse.json({ questions: questionTexts });
+    return NextResponse.json({ 
+      questions: questionTexts,
+      remainingUses: remainingUses - 1,
+      hoursUntilReset,
+      isPreWritten: false
+    }, {
+      headers: {
+        'X-RateLimit-Remaining': (remainingUses - 1).toString(),
+        'X-RateLimit-Reset-Hours': hoursUntilReset.toString(),
+      }
+    });
   } catch (error) {
     console.error('Error generating questions:', error);
     return NextResponse.json(

@@ -33,3 +33,6 @@ Follow these rules when you write code:
 - Use consts instead of functions, for example, “const toggle = () =>”. Also, define a type if possible.
 
 for gpt models use "gpt-4o" always
+
+this is an app for finding the last scene of a tv show, the app should be responsive and have a nice ui/ux.
+it's using openai api for getting the last scene of a tv show.

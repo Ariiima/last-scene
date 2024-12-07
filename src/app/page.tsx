@@ -54,7 +54,7 @@ export default function HomePage() {
         </Card>
 
         <div className="mt-6 sm:mt-8 lg:mt-12 grid grid-cols-2 sm:grid-cols-3 gap-2 xs:gap-3 sm:gap-4 lg:gap-6">
-          {['Breaking Bad', 'Game of Thrones', 'Friends'].map((show) => (
+          {['Breaking Bad', 'Game of Thrones', 'Friends', 'The Office'].map((show) => (
             <Card
               key={show}
               className="p-3 xs:p-4 cursor-pointer hover:scale-105 transition-all duration-200 bg-gray-800/60 border-orange-900/30 hover:bg-gray-800/80 hover:border-orange-500/30 group backdrop-blur-sm"
