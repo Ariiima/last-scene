@@ -1,5 +1,9 @@
 import Redis from 'ioredis';
 
-const redis = new Redis('redis://default:JEOFEaqlFFuWbFx5hjFrSkfO0pYSed1Y@redis-11128.c8.us-east-1-2.ec2.redns.redis-cloud.com:11128');
+if (!process.env.REDIS_URL) {
+  throw new Error('REDIS_URL environment variable is not set');
+}
+
+const redis = new Redis(process.env.REDIS_URL);
 
 export default redis; 
