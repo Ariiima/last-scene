@@ -5,6 +5,17 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Define the type for the analysis response
+type AnalysisResponse = {
+  lastWatchedPoint: {
+    season?: number;
+    episode?: number;
+    description: string;
+  };
+  confidence: number;
+  followUpQuestions?: string[];
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -26,7 +37,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that analyzes user responses about a TV series to determine where they left off watching. Based on their answers, determine the most likely episode or point in the series where they stopped watching. Be specific about the season and episode if possible, or describe the story point where they likely stopped.'
+          content: 'You are a helpful assistant that analyzes user responses about a TV series to determine where they left off watching. Provide structured output with the last watched point, confidence level, and follow-up questions if needed.'
         },
         {
           role: 'user',
@@ -35,10 +46,67 @@ export async function POST(request: Request) {
       ],
       model: 'gpt-4o',
       temperature: 0.7,
-      max_tokens: 200,
+      max_tokens: 500,
+      functions: [
+        {
+          name: 'analyzeWatchingProgress',
+          description: 'Analyze where the viewer stopped watching the show',
+          parameters: {
+            type: 'object',
+            properties: {
+              lastWatchedPoint: {
+                type: 'object',
+                properties: {
+                  season: {
+                    type: 'number',
+                    description: 'The season number where the viewer likely stopped'
+                  },
+                  episode: {
+                    type: 'number',
+                    description: 'The episode number where the viewer likely stopped'
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Detailed description of the point where the viewer likely stopped'
+                  }
+                },
+                required: ['description']
+              },
+              confidence: {
+                type: 'number',
+                description: 'Confidence level in the analysis (0-1)'
+              },
+              followUpQuestions: {
+                type: 'array',
+                items: {
+                  type: 'string'
+                },
+                description: 'Additional questions to ask if confidence is low or more clarity is needed'
+              }
+            },
+            required: ['lastWatchedPoint', 'confidence']
+          }
+        }
+      ],
+      function_call: { name: 'analyzeWatchingProgress' }
     });
 
-    const analysis = completion.choices[0].message.content?.trim() || 'Unable to determine the last watched episode.';
+    const functionResponse = completion.choices[0].message.function_call?.arguments;
+    
+    if (!functionResponse) {
+      throw new Error('Failed to get structured response from OpenAI');
+    }
+
+    const analysis: AnalysisResponse = JSON.parse(functionResponse);
+
+    // If confidence is low, always include follow-up questions
+    if (analysis.confidence < 0.7 && !analysis.followUpQuestions) {
+      analysis.followUpQuestions = [
+        "Do you remember any specific character deaths or major plot twists?",
+        "Can you recall any significant locations or settings from your last watched episode?",
+        "What was the main conflict or problem the characters were dealing with when you stopped watching?"
+      ];
+    }
 
     return NextResponse.json({ result: analysis });
 

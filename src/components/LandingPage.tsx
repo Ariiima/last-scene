@@ -52,7 +52,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
         </Button>
       </form>
       <p className="text-xs sm:text-sm text-gray-400">
-        © 2023 LastScene. All rights reserved.
+        © 2024 LastScene. All rights reserved.
       </p>
     </motion.div>
   )
