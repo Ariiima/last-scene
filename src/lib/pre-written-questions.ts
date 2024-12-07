@@ -20,7 +20,7 @@ export const preWrittenQuestions: ShowQuestions = {
     yearRange: "2011-2019",
     briefDescription: "Noble families vie for control of the Seven Kingdoms of Westeros"
   },
-  "The Office (US)": {
+  "The Office": {
     questions: [
       "Have you seen Jim and Pam's first kiss?",
       "Had Michael started his own paper company?",

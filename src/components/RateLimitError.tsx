@@ -9,17 +9,18 @@ export const RateLimitError = ({ hoursUntilReset, onRetry }: RateLimitErrorProps
   return (
     <div className="flex flex-col items-center justify-center p-6 space-y-6 text-center">
       {/* Sad Face Animation */}
-      <motion.span
-        initial={{ scale: 0.8 }}
-        animate={{ 
-          scale: [0.8, 1.1, 0.9, 1],
-          rotate: [0, 0, -10, 0]
-        }}
-        transition={{ duration: 1.5, ease: "easeInOut" }}
-        className="text-6xl mb-4 inline-block"
-      >
-        😢
-      </motion.span>
+      <div className="text-6xl mb-4">
+        <motion.span
+          initial={{ scale: 0.8 }}
+          animate={{ 
+            scale: [0.8, 1.1, 0.9, 1],
+            rotate: [0, 0, -10, 0]
+          }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+        >
+          😢
+        </motion.span>
+      </div>
 
       {/* Error Message */}
       <div className="space-y-3">
@@ -75,27 +76,29 @@ export const RateLimitError = ({ hoursUntilReset, onRetry }: RateLimitErrorProps
           />
         </motion.svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.span
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.8 }}
-            className="text-sm font-medium text-orange-500"
-          >
-            {hoursUntilReset}h
-          </motion.span>
+          <div className="text-sm font-medium text-orange-500">
+            <motion.span
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              {hoursUntilReset}h
+            </motion.span>
+          </div>
         </div>
       </div>
 
       {/* Retry Button */}
-      <motion.button
-        onClick={onRetry}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="px-6 py-2 mt-4 text-white bg-orange-500 rounded-lg shadow-lg hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50 transition-colors"
-      >
-        Try Again
-      </motion.button>
-
+      <div>
+        <motion.button
+          onClick={onRetry}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-2 mt-4 text-white bg-orange-500 rounded-lg shadow-lg hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50 transition-colors"
+        >
+          Try Again
+        </motion.button>
+      </div>
     </div>
   );
 }; 

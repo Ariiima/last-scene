@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import redis from './redis';
 
-const DAILY_LIMIT = 10;
+const DAILY_LIMIT = 100;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 export async function getRateLimitInfo() {

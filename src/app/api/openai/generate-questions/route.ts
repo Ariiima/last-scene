@@ -59,8 +59,6 @@ const functions = [
   }
 ];
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 export async function POST(request: Request) {
   try {
     // Check rate limit
@@ -92,11 +90,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Add artificial delay
-    await sleep(1000);
-
-    // Check if we have pre-written questions for this show
-    const preWritten = [show];
+    // Check for pre-written questions
+    const preWritten = preWrittenQuestions[show];
     if (preWritten) {
       // Increment rate limit after successful response
       await incrementRateLimit();
@@ -105,7 +100,10 @@ export async function POST(request: Request) {
         questions: preWritten.questions,
         remainingUses: remainingUses - 1,
         hoursUntilReset,
-        isPreWritten: true
+        isPreWritten: true,
+        totalSeasons: preWritten.totalSeasons,
+        yearRange: preWritten.yearRange,
+        briefDescription: preWritten.briefDescription
       }, {
         headers: {
           'X-RateLimit-Remaining': (remainingUses - 1).toString(),
