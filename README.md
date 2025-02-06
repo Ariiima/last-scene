@@ -1,6 +1,6 @@
 # LastScene
 
-LastScene is a modern web application that helps users discover the final scenes of TV shows. Using OpenAI's powerful API, it provides detailed descriptions of series endings, helping viewers decide whether to watch a show or refresh their memory of how a series concluded.
+LastScene is a modern web application that helps users figure out when they dropped a show so they can continue it without much headache!
 
 ## Features
 
